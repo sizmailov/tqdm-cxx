@@ -508,7 +508,6 @@ public:
       size = (end - start-step+1)/step;
       end = size*step + start;
     }
-    std::cerr << start << ", "  << end<< ", "  << step << ", "  << size<< std::endl;
     return detail::ProgressBar(Range<T>::Iterator(start, step), Range<T>::Sentinel(end),size);
   }
 
