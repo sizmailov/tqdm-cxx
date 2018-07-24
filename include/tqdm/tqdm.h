@@ -100,13 +100,13 @@ public:
     return Sentinel(m_end);
   }
 
-  ProgressBar desc(const std::string& message)&& {
-    m_message = message;
+  ProgressBar desc(std::string message)&& {
+    m_message = std::move(message);
     return std::move(*this);
   }
 
-  ProgressBar& desc(const std::string& message)& {
-    m_message = message;
+  ProgressBar& desc(std::string message)& {
+    m_message = std::move(message);
     return *this;
   }
 
@@ -224,10 +224,14 @@ private:
         std::cout << move_cursor_up << erase_line;
       }
       if (m_size) {
+        double percent = m_n * 100 / m_size.value();
+
+        std::cout << std::setfill(' ') << std::setw(3) << std::fixed << std::setprecision(0) << percent << "% ";
+
         std::cout << m_n
                   << "/"
                   << display_bright << m_size.value() << reset_display;
-        print_progress_line(std::cout, m_n * 100 / m_size.value(), 30, m_message);
+        print_bar(std::cout, percent, 30, m_message);
       } else {
         std::cout << m_n;
       }
@@ -278,7 +282,7 @@ private:
     }
   }
 
-  void print_progress_line(std::ostream& out, int percent, int width, const std::string& text = "") {
+  void print_bar(std::ostream& out, int percent, int width, const std::string& text = "") {
     bool violated = false;
     if (percent < 0 || percent > 100) {
       violated = true;
