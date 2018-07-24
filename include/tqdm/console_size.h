@@ -20,7 +20,7 @@
 namespace console_size{
 
 
-  std::pair<int,int> get_console_size(){
+inline std::pair<int,int> get_console_size(){
 #ifdef TQDM_ON_WINDOWS
     CONSOLE_SCREEN_BUFFER_INFO csbi;
 

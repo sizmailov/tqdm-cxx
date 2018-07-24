@@ -92,6 +92,9 @@ public:
   }
 
   void start() {
+    if (m_disabled) {
+      return;
+    }
     if (m_started) {
       throw std::runtime_error("tqdm.begin:  double enter");
     }
