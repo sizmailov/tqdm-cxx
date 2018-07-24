@@ -8,5 +8,6 @@ set(CMAKE_CXX_FLAGS " -O0 -g -fsanitize=address -fno-omit-frame-pointer ${CMAKE_
 add_executable(tqdm
         main.cpp
         include/tqdm/console_codes.h
+        include/tqdm/console_size.h
         include/tqdm/tqdm.h
         include/tqdm/utils.h)

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <type_traits>
+
 // copied directly from TS https://en.cppreference.com/w/cpp/experimental/is_detected
 namespace utils {
 

@@ -13,6 +13,7 @@
 
 #include "./utils.h"
 #include "./console_codes.h"
+#include "./console_size.h"
 
 namespace tqdm {
 
@@ -74,9 +75,8 @@ public:
     if (m_leave) {
       m_min_iterations_to_print = 0;
       print_progress_line();
-      std::cout << "Total prints: " << m_total_prints << std::endl;
     } else {
-      std::cout << console_codes::move_cursor_up << console_codes::erase_line;
+      (*m_file) << console_codes::move_cursor_up << console_codes::erase_line;
     }
   }
 
@@ -123,12 +123,12 @@ public:
   }
 
 
-  ProgressBar ncols(long long n)&& {
+  ProgressBar ncols(int n)&& {
     m_ncols = n;
     return std::move(*this);
   }
 
-  ProgressBar& ncols(long long n)& {
+  ProgressBar& ncols(int n)& {
     m_ncols = n;
     return *this;
   }
@@ -165,6 +165,16 @@ public:
     return *this;
   }
 
+  ProgressBar file(std::ostream& out)&& {
+    m_file = &out;
+    return std::move(*this);
+  }
+
+  ProgressBar& file(std::ostream& out)& {
+    m_file = &out;
+    return *this;
+  }
+
 
 private:
   Iterator1 m_begin;
@@ -175,10 +185,11 @@ private:
   std::chrono::milliseconds m_mininterval = std::chrono::milliseconds{100};
   std::optional<long long> m_min_iterations_to_print = {};
   std::optional<double> estimated_speed = {};
+  std::ostream* m_file = &std::cerr;
   std::string m_message;
   std::string unit = "it";
 
-  long long m_ncols = 80;
+  std::optional<int> m_ncols;
   long long m_n = 0;
   long long m_n_last_update = 0;
   long long m_total_prints = 0;
@@ -290,21 +301,28 @@ private:
 
 
       if (!is_first) {
-        std::cout << move_cursor_up << erase_line;
+        (*m_file) << move_cursor_up << erase_line;
       }
-      std::cout << prefix.str();
 
+      (*m_file) << prefix.str();
 
-      int free_space = m_ncols - std::regex_replace(prefix.str()+suffix.str(), std::regex("\033\\[\\d+\\w"),"").size();
+      int cols = 0;
+      if (m_ncols){
+        cols = m_ncols.value();
+      }else{
+        cols = console_size::get_console_size().second;
+      }
+
+      int free_space = cols - std::regex_replace(prefix.str()+suffix.str(), std::regex("\033\\[\\d+\\w"),"").size();
 
 
       if (free_space>0){
-        print_bar(std::cout, percent.value_or(0), free_space, m_message);
+        print_bar((*m_file), percent.value_or(0), free_space, m_message);
       }
 
-      std::cout << suffix.str();
+      (*m_file) << suffix.str();
 
-      std::cout << std::endl;
+      (*m_file) << std::endl;
 
 
       ++m_total_prints;
