@@ -7,6 +7,7 @@
 #include <string_view>
 #include <iomanip>
 #include <chrono>
+#include <cmath>
 
 #include "./utils.h"
 #include "./console_codes.h"
@@ -171,7 +172,10 @@ private:
   std::chrono::high_resolution_clock::time_point m_last_update_time;
   std::chrono::milliseconds m_mininterval = std::chrono::milliseconds{100};
   std::optional<long long> m_min_iterations_to_print = {};
+  std::optional<double> estimated_speed = {};
   std::string m_message;
+  std::string unit = "it";
+
   long long m_ncols = 80;
   long long m_n = 0;
   long long m_n_last_update = 0;
@@ -202,11 +206,12 @@ private:
 
     if (m_n - m_n_last_update >= m_min_iterations_to_print.value_or(0)) {
       auto now = std::chrono::high_resolution_clock::now();
+      auto dt_from_last_update = std::chrono::duration_cast<std::chrono::nanoseconds>(now - m_last_update_time);
       if (m_min_iterations_to_print) {
         m_min_iterations_to_print =
             (m_n - m_n_last_update) *
             std::chrono::duration_cast<std::chrono::nanoseconds>(m_mininterval).count() /
-            std::chrono::duration_cast<std::chrono::nanoseconds>(now - m_last_update_time).count();
+            dt_from_last_update.count();
 
         if (m_min_iterations_to_print == 0) {
           m_min_iterations_to_print = 1;
@@ -227,21 +232,40 @@ private:
         std::cout << m_n;
       }
       if (m_min_iterations_to_print) {
-        std::cout
-            << ", "
-            << m_min_iterations_to_print.value()
-               * 1000
-               / std::chrono::duration_cast<std::chrono::milliseconds>(m_mininterval).count()
-            << " it/s";
+        if (m_n - m_n_last_update>0){
+          double speed = (m_n - m_n_last_update)
+              * 1e9 / std::chrono::duration_cast<std::chrono::nanoseconds>(dt_from_last_update).count();
+          estimated_speed = speed;
+        }
       }
-      std::cout << "[";
-      print_time(std::cout, std::chrono::duration_cast<std::chrono::milliseconds>(elapsed_time));
-      if (m_size && m_n > 0) {
-        std::cout << " / ";
-        print_time(std::cout,
-                   std::chrono::duration_cast<std::chrono::milliseconds>(m_size.value() * elapsed_time / m_n));
+
+      if (estimated_speed){
+        print_speed(std::cout, estimated_speed.value());
+      }else{
+        std::cout << "   ?? "<<unit<<"/s";
       }
-      std::cout << "]";
+
+
+      std::cout << fg_yellow << "[" << reset_display;
+      if (m_size) {
+        bool more_than_hour = elapsed_time > std::chrono::hours{1};
+        std::optional<std::chrono::milliseconds> total_estimation;
+        if (m_n > 0){
+          total_estimation = std::chrono::duration_cast<std::chrono::milliseconds>(m_size.value() * elapsed_time / m_n);
+          more_than_hour |= total_estimation > std::chrono::hours{1};
+        }
+
+        print_time(std::cout, std::chrono::duration_cast<std::chrono::milliseconds>(elapsed_time), more_than_hour);
+        std::cout << "/";
+        if (total_estimation){
+          print_time(std::cout,total_estimation.value(),more_than_hour);
+        }else{
+          std::cout << "??" << (more_than_hour?("      "):("   "));
+        }
+      }else{
+        print_time(std::cout, std::chrono::duration_cast<std::chrono::milliseconds>(elapsed_time));
+      }
+      std::cout << fg_yellow << "]" << reset_display;
 
       std::cout << std::endl;
 
@@ -290,7 +314,20 @@ private:
     }
   }
 
-  void print_time(std::ostream& out, std::chrono::milliseconds dt) {
+  void print_speed(std::ostream& out, double speed){
+    std::string suffix = unit+"/s";
+    if (std::fabs(speed)<1.0){
+      speed = 1/speed;
+      suffix = "s/"+unit;
+    }
+    auto [num, places, scale] = format_sizeof(speed);
+
+    auto old_fill = out.fill();
+    out << std::fixed << std::setw(5) << std::setprecision(places) << std::setfill(' ') << num << scale << " " << suffix;
+    out << std::setfill(old_fill);
+  }
+
+  void print_time(std::ostream& out, std::chrono::milliseconds dt, bool more_than_hour=false) {
 
     auto h = std::chrono::duration_cast<std::chrono::hours>(dt);
     auto m = std::chrono::duration_cast<std::chrono::minutes>(dt - h);
@@ -299,8 +336,7 @@ private:
 
     using namespace console_codes;
 
-
-    if (h.count() > 0) {
+    if (more_than_hour || h.count() > 0) {
       out
           << fg_magenta
           << display_bright
@@ -319,6 +355,18 @@ private:
         << display_bright
         << std::setw(2) << std::setfill('0') << s.count()
         << reset_display;
+  }
+
+  std::tuple<double, int, const char*> format_sizeof(double num){
+    const double divisor=1000;
+
+    for(auto unit: {"", "k", "M", "G", "T", "P", "E", "Z"}){
+      if (std::fabs(num) < 9.995) return {num,2,unit};
+      if (std::fabs(num) < 99.95) return {num,1,unit};
+      if (std::fabs(num) < 999.5) return {num,0,unit};
+      num /= divisor;
+    }
+    return {num,0, "Z"};
   }
 };
 
