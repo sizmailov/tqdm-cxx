@@ -4,6 +4,8 @@
 #include <optional>
 #include <vector>
 #include <string>
+#include <sstream>
+#include <regex>
 #include <string_view>
 #include <iomanip>
 #include <chrono>
@@ -184,9 +186,24 @@ private:
   bool m_disabled = false;
   bool m_started = false;
 
-
+  int count_places(long long i){
+    i = abs(i);
+    int places = 0;
+    while (i!=0){
+      if (i<10) return 1+places;
+      if (i<100) return 2+places;
+      if (i<1000) return 3+places;
+      if (i<10000) return 4+places;
+      places+=4;
+      i/=10000;
+    }
+    return places;
+  }
   template<bool is_first = false>
   void print_progress_line() {
+
+    std::stringstream prefix;
+    std::stringstream suffix;
 
     using namespace console_codes;
 
@@ -220,20 +237,19 @@ private:
 
       auto elapsed_time = now - m_begin_time;
 
-      if (!is_first) {
-        std::cout << move_cursor_up << erase_line;
-      }
+      std::optional<int> percent;
+
       if (m_size) {
-        double percent = m_n * 100 / m_size.value();
+        int places = count_places(m_size.value());
+        percent = m_n * 100 / m_size.value();
 
-        std::cout << std::setfill(' ') << std::setw(3) << std::fixed << std::setprecision(0) << percent << "% ";
+        prefix << std::setfill(' ') << std::setw(3) << std::fixed << std::setprecision(0) << percent.value() << "% ";
 
-        std::cout << m_n
+        prefix << std::setw(places) << m_n
                   << "/"
-                  << display_bright << m_size.value() << reset_display;
-        print_bar(std::cout, percent, 30, m_message);
+                  << display_bright << std::setw(places) << m_size.value() << reset_display;
       } else {
-        std::cout << m_n;
+        prefix << m_n;
       }
       if (m_min_iterations_to_print) {
         if (m_n - m_n_last_update>0){
@@ -244,13 +260,13 @@ private:
       }
 
       if (estimated_speed){
-        print_speed(std::cout, estimated_speed.value());
+        print_speed(suffix, estimated_speed.value());
       }else{
-        std::cout << "   ?? "<<unit<<"/s";
+        suffix << "    ?? "<<unit<<"/s";
       }
 
 
-      std::cout << fg_yellow << "[" << reset_display;
+      suffix << fg_yellow << "[" << reset_display;
       if (m_size) {
         bool more_than_hour = elapsed_time > std::chrono::hours{1};
         std::optional<std::chrono::milliseconds> total_estimation;
@@ -259,17 +275,34 @@ private:
           more_than_hour |= total_estimation > std::chrono::hours{1};
         }
 
-        print_time(std::cout, std::chrono::duration_cast<std::chrono::milliseconds>(elapsed_time), more_than_hour);
-        std::cout << "/";
+        print_time(suffix, std::chrono::duration_cast<std::chrono::milliseconds>(elapsed_time), more_than_hour);
+        suffix << "/";
         if (total_estimation){
-          print_time(std::cout,total_estimation.value(),more_than_hour);
+          print_time(suffix,total_estimation.value(),more_than_hour);
         }else{
-          std::cout << "??" << (more_than_hour?("      "):("   "));
+          suffix << "??" << (more_than_hour?("      "):("   "));
         }
       }else{
-        print_time(std::cout, std::chrono::duration_cast<std::chrono::milliseconds>(elapsed_time));
+        print_time(suffix, std::chrono::duration_cast<std::chrono::milliseconds>(elapsed_time));
       }
-      std::cout << fg_yellow << "]" << reset_display;
+      suffix << fg_yellow << "]" << reset_display;
+
+
+
+      if (!is_first) {
+        std::cout << move_cursor_up << erase_line;
+      }
+      std::cout << prefix.str();
+
+
+      int free_space = m_ncols - std::regex_replace(prefix.str()+suffix.str(), std::regex("\033\\[\\d+\\w"),"").size();
+
+
+      if (free_space>0){
+        print_bar(std::cout, percent.value_or(0), free_space, m_message);
+      }
+
+      std::cout << suffix.str();
 
       std::cout << std::endl;
 
