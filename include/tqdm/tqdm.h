@@ -221,8 +221,6 @@ private:
   template<bool is_first = false>
   void print_progress_line() {
 
-    std::stringstream prefix;
-    std::stringstream suffix;
 
     using namespace console_codes;
 
@@ -241,6 +239,10 @@ private:
     }
 
     if (m_n - m_n_last_update >= m_min_iterations_to_print.value_or(0)) {
+
+      std::stringstream prefix;
+      std::stringstream suffix;
+
       auto now = std::chrono::high_resolution_clock::now();
       auto dt_from_last_update = std::chrono::duration_cast<std::chrono::nanoseconds>(now - m_last_update_time);
       if (m_min_iterations_to_print) {
