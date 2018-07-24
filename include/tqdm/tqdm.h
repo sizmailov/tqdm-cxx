@@ -66,7 +66,7 @@ public:
   ProgressBar(){
   };
 
-  ProgressBar(Iterator1 begin, Iterator2 end, std::optional<long long> size = 0) : m_begin(begin), m_end(end), m_size(
+  ProgressBar(Iterator1 begin, Iterator2 end, std::optional<long long> size = {}) : m_begin(begin), m_end(end), m_size(
       size) {
   }
 
@@ -462,6 +462,62 @@ public:
 
 };
 
+template<typename T>
+class Range{
+public:
+  class Iterator;
+  class Sentinel {
+  public:
+    explicit Sentinel(T pos) : m_pos(pos) {
+    }
+
+  private:
+    friend class Iterator;
+    long long m_pos;
+  };
+
+  class Iterator{
+  public:
+    explicit Iterator(T pos, T step) : m_pos(pos), m_step(step) {
+    }
+
+    decltype(auto) operator*() {
+      return m_pos;
+    }
+
+    decltype(auto) operator++() {
+      m_pos+=m_step;
+      return *this;
+    }
+
+    bool operator!=(const Sentinel& sentinel) {
+      return m_pos != sentinel.m_pos;
+    }
+
+  private:
+    T m_pos;
+    T m_step;
+  };
+
+  auto operator()(T start, T end, T step=1) const {
+    T size;
+    if (step > 0){
+      size =(end - start+step-1)/step;
+      end = size*step + start;
+    }else{
+      size = (end - start-step+1)/step;
+      end = size*step + start;
+    }
+    std::cerr << start << ", "  << end<< ", "  << step << ", "  << size<< std::endl;
+    return detail::ProgressBar(Range<T>::Iterator(start, step), Range<T>::Sentinel(end),size);
+  }
+
+  auto operator()(T end) const {
+    return (*this)(0,end,1);
+  }
+};
+
 constexpr auto tqdm = Tqdm();
+constexpr auto range = Range<long long>();
 
 }
