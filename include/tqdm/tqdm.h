@@ -63,6 +63,9 @@ public:
     ProgressBar& m_pbar;
   };
 
+  ProgressBar(){
+  };
+
   ProgressBar(Iterator1 begin, Iterator2 end, std::optional<long long> size = 0) : m_begin(begin), m_end(end), m_size(
       size) {
   }
@@ -88,13 +91,18 @@ public:
     print_progress_line();
   }
 
-  auto begin()& {
+  void start() {
     if (m_started) {
       throw std::runtime_error("tqdm.begin:  double enter");
     }
     m_begin_time = std::chrono::high_resolution_clock::now();
     m_started = true;
     print_progress_line<true>();
+  }
+
+
+  auto begin()& {
+    this->start();
     return IteratorWrapper(*this, m_begin);
   }
 
@@ -182,7 +190,7 @@ private:
   std::optional<long long> m_size;
   std::chrono::high_resolution_clock::time_point m_begin_time;
   std::chrono::high_resolution_clock::time_point m_last_update_time;
-  std::chrono::milliseconds m_mininterval = std::chrono::milliseconds{100};
+  std::chrono::milliseconds m_mininterval = std::chrono::milliseconds{200};
   std::optional<long long> m_min_iterations_to_print = {};
   std::optional<double> estimated_speed = {};
   std::ostream* m_file = &std::cerr;
