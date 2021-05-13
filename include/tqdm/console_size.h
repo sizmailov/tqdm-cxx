@@ -13,7 +13,7 @@
 #ifdef TQDM_ON_NIX
 #include <sys/ioctl.h>
 #include <unistd.h>
-#elif define(TQDM_ON_WINDOWS)
+#elif defined(TQDM_ON_WINDOWS)
 #include <windows.h>
 #endif
 
