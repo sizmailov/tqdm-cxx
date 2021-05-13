@@ -14,7 +14,13 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 #elif defined(TQDM_ON_WINDOWS)
+#ifdef NOMINMAX
 #include <windows.h>
+#else
+#define NOMINMAX
+#include <windows.h>
+#undef NOMINMAX
+#endif
 #endif
 
 namespace console_size{
